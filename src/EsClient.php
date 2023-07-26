@@ -29,6 +29,9 @@ class ESClient
             $config = config('elasticsearch');
         }
         if (empty($config)){
+            $config = $elasticsearch_config;
+        }
+        if (empty($config)){
             throw new \RuntimeException("请配置elasticsearch服务器连接数据");
         }
         /** 获取配置 */
