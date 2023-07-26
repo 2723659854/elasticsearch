@@ -32,9 +32,9 @@ class ESClient
             throw new \RuntimeException("请配置elasticsearch服务器连接数据");
         }
         /** 获取配置 */
-        $nodes = empty($config['nodes'])?$config['nodes']:$this->nodes;
-        $esUserName = empty($config['username'])?$config['username']:'';
-        $esPassword = empty($config['password'])?$config['password']:'';
+        $nodes = !empty($config['nodes'])?$config['nodes']:$this->nodes;
+        $esUserName = !empty($config['username'])?$config['username']:'';
+        $esPassword = !empty($config['password'])?$config['password']:'';
 
         /** 创建客户端 */
         $client = ClientBuilder::create();
@@ -48,6 +48,7 @@ class ESClient
 
     /**
      * 创建索引
+     *
      * @param string $index 索引
      * @param string $type 类型
      * @return array
@@ -300,6 +301,7 @@ class ESClient
 
 
     /**
+     * and 查询，并且查询
      * 多个字段并列查询，多个字段同时满足需要查询的值,相当于and
      * @param string $index
      * @param string $type
@@ -333,21 +335,21 @@ class ESClient
             'body'  => [
                 'query'     => [
                     'bool' => [
-                        'should' => $match,
+                        'must' => $match,
                     ],
                 ],
                 'sort'      => $sort,
                 'from'      => $from,
                 'size'      => $size,
-                'highlight' => [
-                    'fields'    => [
-                        'title' => [
-                            'type' => 'unified'
-                        ],
-                    ],
+//                'highlight' => [
+//                    'fields'    => [
+//                        'title' => [
+//                            'type' => 'unified'
+//                        ],
+//                    ],
 //                    'pre_tags'  => ["<font color='red'>"],
 //                    "post_tags" => ["</font>"]
-                ],
+//                ],
 
             ]
         ];
@@ -356,7 +358,64 @@ class ESClient
 
 
     /**
-     * or查询  多字段或者查询
+     * or 查询 或者查询
+     * 根据多个字段查询，只要有一个字段复合要求，则返回记录
+     * @param string $index
+     * @param string $type
+     * @param array $key
+     * @param string $keywords
+     * @param int $from
+     * @param int $size
+     * @param array $order
+     * @return array|callable
+     */
+    public function orSearch(string $index, string $type, array $key, string $keywords, int $from = 0, int $size = 10, array $order = ['_id' => 'desc'])
+    {
+        $sort = [];
+        if (!empty($order)) {
+            foreach ($order as $k => $v) {
+                $sort[] = [$k => ['order' => $v]];
+            }
+        }
+        $match = [];
+        foreach ($key as $field) {
+            $match[] = [
+                'match' => [
+                    $field => $keywords
+                ]
+            ];
+        }
+
+        $params = [
+            'index' => $index,
+            'type'  => $type,
+            'body'  => [
+                'query'     => [
+                    'bool' => [
+                        'should' => $match,
+                    ],
+                ],
+                'sort'      => $sort,
+                'from'      => $from,
+                'size'      => $size,
+//                'highlight' => [
+//                    'fields'    => [
+//                        'title' => [
+//                            'type' => 'unified'
+//                        ],
+//                    ],
+//                    'pre_tags'  => ["<font color='red'>"],
+//                    "post_tags" => ["</font>"]
+//                ],
+
+            ]
+        ];
+        return $this->client->search($params);
+    }
+
+
+    /**
+     * 多字段合并查询
      * 根据多个字段查询，使用多个字段查询，然后合并结果，
      * @param string $index
      * @param string $type
@@ -367,7 +426,7 @@ class ESClient
      * @param array $order
      * @return array
      */
-    public function orSearch(string $index, string $type, array $keys, string $keywords, int $from = 0, int $size = 10, array $order = ['_id' => 'desc']):array{
+    public function mergeSearch(string $index, string $type, array $keys, string $keywords, int $from = 0, int $size = 10, array $order = ['_id' => 'desc']):array{
         if (empty($keys))return[];
         $result=[];
         foreach ($keys as $key){
@@ -399,6 +458,19 @@ class ESClient
             ]
         ];
         return $this->client->deleteByQuery($param);
+    }
+
+    /**
+     * 使用条件更新数据
+     * @param string $index
+     * @param string $type
+     * @param string $key
+     * @param string $value
+     * @param array $data = ['key1'=>'value1','key2'=>'value2']
+     * @return array|null
+     */
+    public function updateByQuery(string $index, string $type, string $key,  $value,array $data):?array{
+        return $this->updateByScript( $index,  $type,  $key, $value,  $data);
     }
 
     /**
@@ -484,7 +556,23 @@ class ESClient
                 ]
             ]
         ];
+
         return $this->client->putScript($params);
+    }
+
+    /**
+     * 删除脚本
+     * @param string $id
+     * @return bool
+     */
+    public function deleteScript(string $id):bool{
+        try {
+             $this->client->deleteScript(['id'=>$id]);
+             return true;
+        }catch (\Exception $exception){
+            return false;
+        }
+
     }
 
     /**
@@ -497,7 +585,11 @@ class ESClient
         $params = [
             'id' => $id
         ];
-        return $this->client->getScript($params);
+        try {
+            return $this->client->getScript($params);
+        }catch (\Exception $exception){
+            return ['_id'=>null,'found'=>0,'script'=>[]];
+        }
     }
 
     /**
@@ -539,7 +631,7 @@ class ESClient
      * @param string $type 类型
      * @param string $key 筛选的字段
      * @param mixed $value 筛选的值
-     * @param array $data 更新的值
+     * @param array $data 更新的值 = ['key1'=>'value1','key2'=>'value2']
      * @return array
      */
     public function updateByScript(string $index, string $type, string $key, $value, array $data): array
@@ -593,7 +685,7 @@ class ESClient
      * @param array $data 需要修改的数据
      * @return array
      */
-    public function update(string $index,string $type,string $id, array $data):array
+    public function updateById(string $index,string $type,string $id, array $data):array
     {
         $params = [
             'index' => $index,
