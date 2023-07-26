@@ -1,0 +1,28 @@
+{
+    "name": "xiaosongshu/elasticsearch",
+    "description": "\"elasticsearch 客户端\"",
+    "type": "library",
+    "license": "mit",
+    "autoload": {
+        "psr-4": {
+            "Xiaosongshu\\Elasticsearch\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "yanglong",
+            "email": "2723659854@qq.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.4.1",
+        "elasticsearch/elasticsearch": "7.17.1"
+    },
+    "repositories": {
+        "packagist": {
+            "type": "composer",
+            "url": "https://mirrors.aliyun.com/composer/"
+        }
+    }
+}
