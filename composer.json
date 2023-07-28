@@ -17,12 +17,15 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=7.4.1",
-        "elasticsearch/elasticsearch": "7.17.1"
+        "elasticsearch/elasticsearch": "7.17.1",
     },
     "repositories": {
         "packagist": {
             "type": "composer",
             "url": "https://mirrors.aliyun.com/composer/"
         }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "9.6.x-dev"
     }
 }

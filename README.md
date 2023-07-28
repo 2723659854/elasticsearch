@@ -192,7 +192,10 @@ $result = $client->andSearch('index','_doc',['title','content'],'测试');
 $result = $client->orSearch('index','_doc',['title','content'],'今天');
 
 ```
-
+#### 测试
+```bash 
+ php ./vendor/bin/phpunit -c phpunit.xml
+```
 ### 联系作者
 2723659854@qq.com
 

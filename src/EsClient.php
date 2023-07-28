@@ -15,8 +15,8 @@ use Elasticsearch\ClientBuilder;
 class ESClient
 {
 
-    /**  php的elasticsearch客户端 */
-    public  $client;
+    /**  @var Client $client php的elasticsearch客户端 */
+    public Client $client;
     /** @var array|string[] $nodes es服务器节点  */
     protected array $nodes=['127.0.0.1:9200'];
 
