@@ -524,6 +524,8 @@ class ESClient
      * @param int $from 起始位置
      * @param int $size 长度
      * @return array|callable
+     * @note 不建议查询偏移量超过1000的数据。比如elasticsearch查询偏移量1000，查询10条数据，那么会在每一个分片查询1010条数据，然后返回给
+     * 协调节点，如果有5个分片，那就是5050条数据。对于各个分片来说都是有很大压力的，偏移量越大，复杂度成指数级上升。
      */
     public function all(string $index, string $type, int $from = 0, int $size = 1000): ?array
     {
@@ -738,4 +740,61 @@ class ESClient
         ];
         return $this->client->search($params)['hits']['hits'];
     }
+
+    /**
+     * es的运算符切换
+     * @var array|string[]
+     */
+    public static array $comparative = [
+        '>'=>'',
+        '>='=>'',
+        '<'=>'',
+        '<='=>'',
+        '!='=>''
+    ];
+
+    /**
+     * 根据用户自定义的条件查询
+     * @param string $index
+     * @param string $type
+     * @param array $where
+     * @return array
+     */
+    public function searchByWhere(string $index,string $type, array $where):array
+    {
+
+        // 构建查询条件
+        $params = [
+            'index' => $index,  // 替换为实际的索引名称
+            'type'=>$type,
+            'body'  => [
+                'query' => [
+                    'bool' => [
+                        'must' => [
+                            [
+                                'match' => [
+                                    'title' => '测试'
+                                ]
+                            ],
+                            [
+                                'match' => [
+                                    'content' => '张三'
+                                ]
+                            ],
+                            [
+                                'range'=>[
+                                    'test_a'=>[
+                                        'gt'=>9
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
 }
