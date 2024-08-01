@@ -980,37 +980,6 @@ class ESClient
         return $this;
     }
 
-    public function groupByDemo()
-    {
-        $params = [
-            'index' => 'index',
-            'body' => [
-                'size' => 0,  // 不返回顶部的原始文档，只返回聚合结果
-                'aggs' => [
-                    'age_sex_groups' => [
-                        'composite' => [
-                            'sources' => [
-                                ['age' => ['terms' => ['field' => 'age']]],
-                                ['sex' => ['terms' => ['field' => 'sex']]]
-                            ],
-                            /** 使用字段进行分组，进行排列组合处理，每一次返回的组合数 */
-                            'size' => 100  // 每次返回的分组数量 这个不动
-                        ],
-                        'aggregations' => [
-                            'top_documents' => [
-                                'top_hits' => [
-                                    /** 对处理结果进行分页，考虑到分片的性能问题，最大设置为1000 ，否则复杂度呈指数级上升 */
-                                    'size' => 1000  // 每个分组返回的文档数量 ,分页的时候变更这里
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        ];
-
-        return $this->client->search($params);
-    }
 
     /**
      * 查询所有数据
@@ -1423,5 +1392,113 @@ class ESClient
         }
         return $this;
     }
+
+
+    public function whereInQuery()
+    {
+        $params = [
+            'index' => 'index',
+            'body'  => [
+                'query' => [
+                    'terms' => [
+                        'age' => [25, 30, 35]
+                    ]
+                ],
+                '_source' => [
+                    'includes' => ['name', 'age']
+                ],
+                'size' => 10
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
+    public function whereIn()
+    {
+
+    }
+
+    public function whereNotInQuery()
+    {
+        $params = [
+            'index' => 'index',
+            'body'  => [
+                'query' => [
+                    'bool' => [
+                        'must_not' => [
+                            [
+                                'terms' => [
+                                    'age' => [25, 30, 35]
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                '_source' => [
+                    'includes' => ['name', 'age']
+                ],
+                'size' => 10
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
+
+
+
+    public function whereBetweenQuery()
+    {
+        $params = [
+            'index' => 'index',
+            'body'  => [
+                'query' => [
+                    'range' => [
+                        'age' => [
+                            'gte' => 20, // 大于等于
+                            'lte' => 30  // 小于等于
+                        ]
+                    ]
+                ],
+                '_source' => [
+                    'includes' => ['name', 'age']
+                ],
+                'size' => 10
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
+    public function whereNotBetweenQuery()
+    {
+        $params = [
+            'index' => 'index',
+            'body'  => [
+                'query' => [
+                    'bool' => [
+                        'must_not' => [
+                            [
+                                'range' => [
+                                    'age' => [
+                                        'gte' => 20, // 大于等于
+                                        'lte' => 30  // 小于等于
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                '_source' => [
+                    'includes' => ['name', 'age']
+                ],
+                'size' => 10
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
 
 }
