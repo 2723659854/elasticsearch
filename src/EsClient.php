@@ -951,6 +951,38 @@ class ESClient
         return $this;
     }
 
+    public function groupByDemo()
+    {
+        $params = [
+            'index' => 'index',
+            'body'  => [
+                'size' => 0,  // 不返回顶部的原始文档，只返回聚合结果
+                'aggs' => [
+                    'age_sex_groups' => [
+                        'composite' => [
+                            'sources' => [
+                                [ 'age' => [ 'terms' => [ 'field' => 'age' ] ] ],
+                                [ 'sex' => [ 'terms' => [ 'field' => 'sex' ] ] ]
+                            ],
+                            /** 使用字段进行分组，进行排列组合处理，每一次返回的组合数 */
+                            'size' => 100  // 每次返回的分组数量 这个不动
+                        ],
+                        'aggregations' => [
+                            'top_documents' => [
+                                'top_hits' => [
+                                    /** 对处理结果进行分页，考虑到分片的性能问题，最大设置为1000 ，否则复杂度呈指数级上升 */
+                                    'size' => 1000  // 每个分组返回的文档数量 ,分页的时候变更这里
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        return $this->client->search($params);
+    }
+
     /**
      * 查询所有数据
      * @return array|callable
@@ -999,6 +1031,34 @@ class ESClient
                 $params['body']['_source'] = $this->select;
             }
         }
+        /** 数据分组 */
+        if ($this->groupBy){
+            /** 分页不再生效 */
+            $params['from']=0;
+            $params['size']=0;
+            $params['body']['size']=0;
+            $params['body']['aggs']=[
+                'groupBy' => [
+                    'composite' => [
+                        'sources' =>  $this->groupBy,
+                        /** 使用字段进行分组，进行排列组合处理，每一次返回的组合数 */
+                        'size' => 100  // 每次返回的分组数量 这个不动
+                    ],
+                    'aggregations' => [
+                        'top_documents' => [
+                            'top_hits' => [
+                                /** 对处理结果进行分页，考虑到分片的性能问题，最大设置为1000 ，否则复杂度呈指数级上升 */
+                                'size' => 100,  // 每个分组返回的文档数量 ,分页的时候变更这里，作为内存数据库，咱不考虑分页
+                                '_source'=>[
+                                    /** 对分组后的数据进行筛选 */
+                                    'includes' => $this->select,
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ];
+        }
 
         $this->clearCondition();
 
@@ -1032,6 +1092,7 @@ class ESClient
         $this->select = [];
         $this->index = '';
         $this->type = '';
+        $this->groupBy = [];
     }
 
     /**
@@ -1177,4 +1238,22 @@ class ESClient
     {
         return $this->client->$name(...$arguments);
     }
+
+
+
+    private array $groupBy = [];
+
+    /**
+     * groupBy分组查询
+     * @param array $array
+     * @return $this
+     */
+    public function groupBy(array $array)
+    {
+        foreach ($array as $value){
+            $this->groupBy[] = [$value => ['terms'=>['field'=>$value]]];
+        }
+        return $this;
+    }
+
 }
