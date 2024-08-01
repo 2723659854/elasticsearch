@@ -1,9 +1,20 @@
 ## elasticsearch 客户端
-
-###安装方法
+### 简介
+ &nbsp;&nbsp;&nbsp;&nbsp;  本客户端旨在降低elasticsearch的上手难度，依赖于官方的客户端插件`elasticsearch/elasticsearch`。直接使用官方客户端需要手动构建复杂的请求体，
+稍微有一点错误，操作结果就不对。所以单独构建一个依赖官方客户端的插件，用户只需要传入关键字即可，后面增加了类似于关系型数据库
+的链式操作方法，用起来更简单一些。当然，本插件只能满足一些常用的功能需求，较为复杂的需求仍然需要手动构建请求体，你可以使用本插件
+直接调用官方客户端的方法。
+### 客户端安装方法
 ```bash 
 composer require xiaosongshu/elasticsearch
 ```
+### elasticsearch服务配置
+```bash 
+docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.17.7
+```
+### 关于IK分词器
+参考 加入Ik分词器的方法：https://blog.csdn.net/weixin_44364444/article/details/125758975
+
 ### 基本配置
  支持thinkPHP，laravel，webman等常用框架，需要创建配置文件elasticsearch.php ，放到config/目录下。
  配置内容如下所示：
@@ -17,7 +28,7 @@ composer require xiaosongshu/elasticsearch
     'password'=>'',
 ];
  ```
-###基本用法
+### 基本用法
 实例化客户端
 ```php 
 $client = new \Xiaosongshu\Elasticsearch\ESClient();
