@@ -955,14 +955,14 @@ class ESClient
     {
         $params = [
             'index' => 'index',
-            'body'  => [
+            'body' => [
                 'size' => 0,  // 不返回顶部的原始文档，只返回聚合结果
                 'aggs' => [
                     'age_sex_groups' => [
                         'composite' => [
                             'sources' => [
-                                [ 'age' => [ 'terms' => [ 'field' => 'age' ] ] ],
-                                [ 'sex' => [ 'terms' => [ 'field' => 'sex' ] ] ]
+                                ['age' => ['terms' => ['field' => 'age']]],
+                                ['sex' => ['terms' => ['field' => 'sex']]]
                             ],
                             /** 使用字段进行分组，进行排列组合处理，每一次返回的组合数 */
                             'size' => 100  // 每次返回的分组数量 这个不动
@@ -1025,22 +1025,27 @@ class ESClient
             $params['body']['sort'] = $this->order;
         }
         /** 筛选需要查询的字段 */
-        if ($this->select){
+        if ($this->select) {
             /** 如果是查询所有就不需要过滤字段 */
-            if (!in_array('*',$this->select)){
+            if (!in_array('*', $this->select)) {
                 $params['body']['_source'] = $this->select;
             }
         }
+        /** 处理聚合查询的数据 */
+        $agg = array_merge($this->sumData, $this->aveData, $this->maxData, $this->minData);
+
         /** 数据分组 */
-        if ($this->groupBy){
+        if ($this->groupBy) {
             /** 分页不再生效 */
-            $params['from']=0;
-            $params['size']=0;
-            $params['body']['size']=0;
-            $params['body']['aggs']=[
+            $params['from'] = 0;
+            $params['size'] = 0;
+            /** 不返回顶部的原始文档，只返回聚合结果 */
+            $params['body']['size'] = 0;
+            /** 聚合查询 */
+            $params['body']['aggs'] = [
                 'groupBy' => [
                     'composite' => [
-                        'sources' =>  $this->groupBy,
+                        'sources' => $this->groupBy,
                         /** 使用字段进行分组，进行排列组合处理，每一次返回的组合数 */
                         'size' => 100  // 每次返回的分组数量 这个不动
                     ],
@@ -1049,24 +1054,134 @@ class ESClient
                             'top_hits' => [
                                 /** 对处理结果进行分页，考虑到分片的性能问题，最大设置为1000 ，否则复杂度呈指数级上升 */
                                 'size' => 100,  // 每个分组返回的文档数量 ,分页的时候变更这里，作为内存数据库，咱不考虑分页
-                                '_source'=>[
+                                '_source' => [
                                     /** 对分组后的数据进行筛选 */
                                     'includes' => $this->select,
-                                ]
+                                ],
+                                'sort' => $this->order
                             ]
                         ]
                     ]
                 ]
             ];
+            /** 存在聚合查询，聚合查询是在分组里面 */
+            if ($agg) {
+                foreach ($agg as $item) {
+                    $params['body']['aggs']['groupBy']['aggregations'][] = $item;
+                }
+            }
+
+
+        } else {
+            /** 没有分组，直接聚合查询 */
+            if ($agg) {
+                /** 不返回顶部的原始文档，只返回聚合结果 */
+                $params['body']['size'] = 0;
+                foreach ($agg as $item) {
+                    $params['body']['aggs'][] = $item;
+                }
+                /** 字段筛选 */
+                $params['body']['_source'] = ['includes' => $this->select];
+                /** 排序 */
+                $params['body']['sort'] = $this->order;
+            }
         }
 
         $this->clearCondition();
 
-        print_r($params);
+        // print_r($params);
         return $this->client->search($params);
     }
 
+
+    private array $sumData = [];
+
+    /**
+     * 求和查询
+     * @param array $data
+     * @return $this
+     */
+    public function sum(array $data)
+    {
+        foreach ($data as $value) {
+            $this->sumData[] = [
+                'sum_' . $value => [
+                    'sum' => [
+                        'field' => $value
+                    ]
+                ]
+            ];
+        }
+
+        return $this;
+    }
+
+    private array $aveData = [];
+
+    /**
+     * 求平均值
+     * @param array $data
+     * @return $this
+     */
+    public function ave(array $data)
+    {
+        foreach ($data as $value) {
+            $this->aveData[] = [
+                'ave_' . $value => [
+                    'ave' => [
+                        'field' => $value
+                    ]
+                ]
+            ];
+        }
+        return $this;
+    }
+
+    private array $maxData = [];
+
+    /**
+     * 求最大值
+     * @param array $data
+     * @return $this
+     */
+    public function max(array $data)
+    {
+        foreach ($data as $value) {
+            $this->maxData[] = [
+                'max_' . $value => [
+                    'max' => [
+                        'field' => $value
+                    ]
+                ]
+            ];
+        }
+        return $this;
+    }
+
+    private array $minData = [];
+
+    /**
+     * 取最小值
+     * @param array $data
+     * @return $this
+     */
+    public function min(array $data)
+    {
+        foreach ($data as $value) {
+            $this->minData[] = [
+                'min_' . $value => [
+                    'min' => [
+                        'field' => $value
+                    ]
+                ]
+            ];
+        }
+        return $this;
+    }
+
+
     private array $select = [];
+
     /**
      * 筛选需要查询的字段
      * @param array $fields
@@ -1093,6 +1208,10 @@ class ESClient
         $this->index = '';
         $this->type = '';
         $this->groupBy = [];
+        $this->sumData = [];
+        $this->maxData = [];
+        $this->minData = [];
+        $this->aveData = [];
     }
 
     /**
@@ -1170,13 +1289,13 @@ class ESClient
         $this->clearCondition();
         /** 需要被更新的数据 */
         $source = '';
-        foreach ($data as $key=>$value){
-            $source .= "ctx._source.".$key." = params.".$key;
+        foreach ($data as $key => $value) {
+            $source .= "ctx._source." . $key . " = params." . $key;
         }
         /** 构建脚本 */
         $params['body']['script'] = [
-            'source'=>$source,
-            'params'=>$data
+            'source' => $source,
+            'params' => $data
         ];
 
         return $this->client->updateByQuery($params);
@@ -1240,7 +1359,6 @@ class ESClient
     }
 
 
-
     private array $groupBy = [];
 
     /**
@@ -1250,8 +1368,8 @@ class ESClient
      */
     public function groupBy(array $array)
     {
-        foreach ($array as $value){
-            $this->groupBy[] = [$value => ['terms'=>['field'=>$value]]];
+        foreach ($array as $value) {
+            $this->groupBy[] = [$value => ['terms' => ['field' => $value]]];
         }
         return $this;
     }
