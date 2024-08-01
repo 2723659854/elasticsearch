@@ -743,11 +743,17 @@ class ESClient
         return $this->client->search($params)['hits']['hits'];
     }
 
-    /** 需要排除的条件 */
-    public array $mustNot = [];
+    /**
+     * 需要排除条件的字段
+     * @var array
+     */
+    private array $mustNot = [];
 
-    /** where查询条件并且查询 */
-    public array $must = [];
+    /**
+     * must必须满足查询条件的字段
+     * @var array
+     */
+    private array $must = [];
 
     /**
      * where查询条件
@@ -824,8 +830,11 @@ class ESClient
         return $this;
     }
 
-    /** 或者查询 */
-    public array $should = [];
+    /**
+     * 或者查询的字段
+     * @var array
+     */
+    private array $should = [];
 
     /**
      * orwhere 或者查询
@@ -895,9 +904,17 @@ class ESClient
         return $this;
     }
 
-    public int $from = 0;
+    /**
+     * 翻页偏移量
+     * @var int
+     */
+    private int $from = 0;
 
-    public int $limit = 1000;
+    /**
+     * 分页查询数据条数
+     * @var int
+     */
+    private int $limit = 1000;
 
     /**
      * 数据分页
@@ -912,7 +929,11 @@ class ESClient
         return $this;
     }
 
-    public array $order = [];
+    /**
+     * 需要排序的字段
+     * @var array
+     */
+    private array $order = [];
 
     /**
      * 查询数据排序
@@ -930,9 +951,17 @@ class ESClient
         return $this;
     }
 
-    public string $index = 'index';
+    /**
+     * 数据库名称
+     * @var string
+     */
+    private string $index = 'index';
 
-    public string $type = '_doc';
+    /**
+     * 表名称
+     * @var string
+     */
+    private string $type = '_doc';
 
     /**
      * 设置表名称
@@ -1066,8 +1095,10 @@ class ESClient
             ];
             /** 存在聚合查询，聚合查询是在分组里面 */
             if ($agg) {
-                foreach ($agg as $item) {
-                    $params['body']['aggs']['groupBy']['aggregations'][] = $item;
+                foreach ($agg as $value) {
+                    foreach ($value as $key => $item) {
+                        $params['body']['aggs']['groupBy']['aggregations'][$key] = $item;
+                    }
                 }
             }
 
@@ -1077,8 +1108,10 @@ class ESClient
             if ($agg) {
                 /** 不返回顶部的原始文档，只返回聚合结果 */
                 $params['body']['size'] = 0;
-                foreach ($agg as $item) {
-                    $params['body']['aggs'][] = $item;
+                foreach ($agg as $value) {
+                    foreach ($value as $key => $item) {
+                        $params['body']['aggs'][$key] = $item;
+                    }
                 }
                 /** 字段筛选 */
                 $params['body']['_source'] = ['includes' => $this->select];
@@ -1086,14 +1119,16 @@ class ESClient
                 $params['body']['sort'] = $this->order;
             }
         }
-
+        /** 清空上一轮查询的限制条件 */
         $this->clearCondition();
 
-        // print_r($params);
         return $this->client->search($params);
     }
 
-
+    /**
+     * 需要求和的字段
+     * @var array
+     */
     private array $sumData = [];
 
     /**
@@ -1116,6 +1151,10 @@ class ESClient
         return $this;
     }
 
+    /**
+     * 需要求平均值的字段
+     * @var array
+     */
     private array $aveData = [];
 
     /**
@@ -1137,6 +1176,10 @@ class ESClient
         return $this;
     }
 
+    /**
+     * 需要求最大值的字段
+     * @var array
+     */
     private array $maxData = [];
 
     /**
@@ -1179,7 +1222,10 @@ class ESClient
         return $this;
     }
 
-
+    /**
+     * 需要筛选的字段
+     * @var array
+     */
     private array $select = [];
 
     /**
@@ -1282,6 +1328,7 @@ class ESClient
             /** 不查询所有值 */
             unset($params['body']['query']['match_all']);
         }
+        /** 排序 */
         if ($this->order) {
             $params['body']['sort'] = $this->order;
         }
@@ -1358,7 +1405,10 @@ class ESClient
         return $this->client->$name(...$arguments);
     }
 
-
+    /**
+     * 分组查询数据
+     * @var array
+     */
     private array $groupBy = [];
 
     /**
