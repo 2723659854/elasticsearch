@@ -1030,6 +1030,8 @@ class ESClient
         $this->mustNot = [];
         $this->order = [];
         $this->select = [];
+        $this->index = '';
+        $this->type = '';
     }
 
     /**
