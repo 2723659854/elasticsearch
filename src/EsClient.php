@@ -3,9 +3,9 @@
 
 namespace Xiaosongshu\Elasticsearch;
 
-use Elasticsearch\Client;
-use Elasticsearch\ClientBuilder;
 use PHPUnit\Framework\Exception;
+use Elastic\Elasticsearch\ClientBuilder;
+use Elastic\Elasticsearch\Client;
 
 /**
  * elasticsearch 客户端
@@ -49,35 +49,31 @@ class ESClient
         $nodes = !empty($config['nodes']) ? $config['nodes'] : $this->nodes;
         $esUserName = !empty($config['username']) ? $config['username'] : '';
         $esPassword = !empty($config['password']) ? $config['password'] : '';
-
-        /** 创建客户端 */
-        $client = ClientBuilder::create();
-        /** 鉴权 */
+        /** 創建客戶端 */
+        $client = ClientBuilder::create()->setHosts($nodes);
         if (!empty($esUserName) && !empty($esPassword)) {
             $client->setBasicAuthentication($esUserName, $esPassword);
         }
-        /** 连接服务器节点 */
-        $this->client = $client->setRetries(2)->setHosts($nodes)->build();
+        $this->client = $client->build();
     }
 
     /**
-     * 创建索引
-     *
-     * @param string $index 索引
-     * @param string $type 类型
+     * 創建索引
+     * @param string $index
+     * @param string $type
      * @return array
-     * <code>
-     *     $client->createIndex('index', '_doc');
-     * </code>
+     * @throws \Elastic\Elasticsearch\Exception\ClientResponseException
+     * @throws \Elastic\Elasticsearch\Exception\MissingParameterException
+     * @throws \Elastic\Elasticsearch\Exception\ServerResponseException
      */
-    public function createIndex(string $index, string $type): array
+    public function createIndex(string $index, string $type = ''):array
     {
         $params = [
             'index' => $index,
             'type' => $type,
             'body' => []
         ];
-        return $this->client->index($params);
+        return $this->client->indices()->create($params)->asArray();
     }
 
     /**

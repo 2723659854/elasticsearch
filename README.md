@@ -11,6 +11,8 @@ composer require xiaosongshu/elasticsearch
 ### elasticsearch服务配置
 ```bash 
 docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.17.7
+
+docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e "xpack.security.enabled=false" -e "xpack.security.http.ssl.enabled=false" elasticsearch:8.15.0
 ```
 ### 关于IK分词器
 参考 加入Ik分词器的方法：https://blog.csdn.net/weixin_44364444/article/details/125758975

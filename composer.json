@@ -17,9 +17,14 @@
     "minimum-stability": "dev",
     "require": {
         "php": ">=7.4.1",
-        "elasticsearch/elasticsearch": "7.17.1"
+        "elasticsearch/elasticsearch": "v8.15.0"
     },
     "require-dev": {
         "phpunit/phpunit": "9.6.x-dev"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     }
 }
