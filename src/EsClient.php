@@ -1,110 +1,205 @@
 <?php
-
-
 namespace Xiaosongshu\Elasticsearch;
 
 use PHPUnit\Framework\Exception;
-use Elastic\Elasticsearch\ClientBuilder;
-use Elastic\Elasticsearch\Client;
+use Elasticsearch\ClientBuilder;
 
 /**
- * elasticsearch 客户端
- * @purpose elasticsearch 客户端
- * @package ESClient 客户端
- *
+ * @purpose elasticsearch客户端
+ * @note 新版本兼容elasticsearch v8.15.5
  */
-class ESClient
+class EsClient
 {
 
-    /**  @var Client $client php的elasticsearch客户端 */
-    private Client $client;
-    /** @var array|string[] $nodes es服务器节点 */
-    protected array $nodes = ['127.0.0.1:9200'];
+    /** 客户端 */
+    protected $client;
+
+    /** 节点列表 */
+    protected $nodes = [];
+
+    /** 账号 */
+    protected $username ;
+
+    /** 密码 */
+    protected $password ;
 
     /**
-     * @param array $elasticsearch_config
+     * 实例化客户端
      * <code>
-     *   $client = new \Xiaosongshu\Elasticsearch\ESClient([
-     *  'nodes' => ['192.168.101.170:9200'],
-     *  'username' => '',
-     *  'password' => '',
-     *  ]);
-     *  </code>
+     * $elasticsearchConfig = [
+     *  'nodes' => ['127.0.0.1:9201'],
+     *  'username' => 'elastic',
+     *  'password' => '123456',
+     * ]
+     * </code>
      */
-    public function __construct(array $elasticsearch_config = [])
+    public function __construct(array $elasticsearchConfig = [])
     {
+
         /** 兼容各平台框架 ，支持单应用 */
         if (!function_exists('config')) {
-            $config = $elasticsearch_config;
+            $config = $elasticsearchConfig;
         } else {
             $config = config('elasticsearch');
         }
         if (empty($config)) {
-            $config = $elasticsearch_config;
+            $config = $elasticsearchConfig;
         }
+
         if (empty($config)) {
-            throw new \RuntimeException("请配置elasticsearch服务器连接数据");
+            throw new \RuntimeException("the config of elasticsearch cannot be empty");
         }
         /** 获取配置 */
-        $nodes = !empty($config['nodes']) ? $config['nodes'] : $this->nodes;
-        $esUserName = !empty($config['username']) ? $config['username'] : '';
-        $esPassword = !empty($config['password']) ? $config['password'] : '';
-        /** 創建客戶端 */
-        $client = ClientBuilder::create()->setHosts($nodes);
-        if (!empty($esUserName) && !empty($esPassword)) {
-            $client->setBasicAuthentication($esUserName, $esPassword);
+        $this->nodes = !empty($config['nodes']) ? $config['nodes'] : $this->nodes;
+        $this->username = !empty($config['username']) ? $config['username'] : '';
+        $this->password = !empty($config['password']) ? $config['password'] : '';
+        /** 链接客户端 */
+        if (empty($this->client)) {
+            $client = ClientBuilder::create()
+                ->setHosts($this->nodes);
+            if (!empty($this->username) && !empty($this->password)) {
+                $client->setBasicAuthentication($this->username, $this->password);
+            }
+            $this->client = $client->build();
         }
-        $this->client = $client->build();
     }
 
     /**
-     * 創建索引
+     * 制定表名
+     * @param string $table 表名称
+     * @return $this
+     */
+    public function table(string $table)
+    {
+        $this->index = $table;
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        return $this;
+    }
+
+
+    /**
+     * 创建表和结构
+     * @param string $table = "my_index"
+     * @param array $columns = []
+     *  <code>
+     *   $columns = [
+     *      'first_name' => [
+     *          'type' => 'text',
+     *          'analyzer' => 'standard'
+     *          ],
+     *      'age' => [
+     *          'type' => 'integer'
+     *          ]
+     *  ]
+     *  </code>
+     * @return array
+     */
+    public function createTable(string $table, array $columns)
+    {
+        if (empty($table)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Columns array cannot be empty');
+        }
+        if ($this->IndexExists($table)) {
+            throw new \InvalidArgumentException('Table already exists');
+        }
+        $params = [
+            'index' => $table,
+            'body' => [
+                'settings' => [
+                    /** 主分片 */
+                    'number_of_shards' => 3,
+                    /** 负分片 */
+                    'number_of_replicas' => 2
+                ],
+                'mappings' => [
+                    '_source' => [
+                        /** 保存原始文本 */
+                        'enabled' => true
+                    ],
+                    /** 属性 */
+                    'properties' => $columns
+                ]
+            ]
+        ];
+        return $this->client->indices()->create($params);
+    }
+
+    /**
+     * 创建表以及表结构
+     * @param string $table
+     * @param string $type
+     * @param array $columns
+     * @return array
+     */
+    public function createMappings(string $table,string $type, array $columns)
+    {
+        return $this->createTable($table, $columns);
+    }
+
+    /**
      * @param string $index
      * @param string $type
      * @return array
-     * @throws \Elastic\Elasticsearch\Exception\ClientResponseException
-     * @throws \Elastic\Elasticsearch\Exception\MissingParameterException
-     * @throws \Elastic\Elasticsearch\Exception\ServerResponseException
      */
     public function createIndex(string $index, string $type = ''):array
     {
         $params = [
             'index' => $index,
-            'type' => $type,
             'body' => []
         ];
-        return $this->client->indices()->create($params)->asArray();
+        return $this->client->indices()->create($params);
     }
 
     /**
-     * 创建表结构
-     * @param string $index 表名称
-     * @param string $type 表类型
-     * @param array $properties
+     * 更新表结构
+     * @param string $table = "my_index"
+     * @param array $columns = []
+     *  <code>
+     *   $columns = [
+     *      'first_name' => [
+     *          'type' => 'text',
+     *          'analyzer' => 'standard'
+     *          ],
+     *      'age' => [
+     *          'type' => 'integer'
+     *          ]
+     *  ]
+     *  </code>
      * @return array
-     * <code>
-     *  $result = $client->createMappings('index', '_doc', [
-     * 'id' => ['type' => 'long',],
-     * 'title' => ['type' => 'text', "fielddata" => true,],
-     * 'content' => ['type' => 'text', 'fielddata' => true],
-     * 'create_time' => ['type' => 'text'],
-     * 'test_a' => ["type" => "integer"],
-     * 'test_b' => ["type" => "rank_feature", "positive_score_impact" => false],
-     * 'test_c' => ["type" => "rank_feature"],
-     * 'name' => ['type' => 'text', "fielddata" => true,],
-     * 'age' => ['type' => 'integer'],
-     * 'sex' => ['type' => 'integer'],
-     * ]);
-     * </code>
      */
-    public function createMappings(string $index, string $type, array $properties = []): array
+    public function updateTable(string $table, array $columns)
     {
+        if (empty($table)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Columns array cannot be empty');
+        }
+        if (!$this->tableExists($table)) {
+            throw new \InvalidArgumentException('Table does not exist');
+        }
         $params = [
-            'index' => $index,
-            'type' => $type,
-            'include_type_name' => true,
+            'index' => $table,
             'body' => [
-                'properties' => $properties
+                'settings' => [
+                    /** 主分片 */
+                    'number_of_shards' => 3,
+                    /** 负分片 */
+                    'number_of_replicas' => 2
+                ],
+                'mappings' => [
+                    '_source' => [
+                        /** 保存原始文本 */
+                        'enabled' => true
+                    ],
+                    /** 属性 */
+                    'properties' => $columns
+                ]
             ]
         ];
         return $this->client->indices()->putMapping($params);
@@ -125,103 +220,176 @@ class ESClient
     }
 
     /**
-     * 获取索引的详情
-     * @param array $indexes =[] 获取索引详情，为空则获取所有索引的详情
+     * 删除表
+     * @param string $table
      * @return array
-     * <code>
-     *     $client->getIndex(['index']);
-     * </code>
      */
-    public function getIndex(array $indexes): array
+    public function deleteTable(string $table)
     {
-        $params = [
-            'index' => $indexes,
-        ];
-        return $this->client->indices()->getSettings($params);
+        return $this->deleteIndex($table);
     }
 
     /**
-     * 根据id批量删除数据
-     * @param array $ids 需要删除的所有记录的ID
-     * @return array
+     * 获取表结构信息
+     * @param array $tables
      * <code>
-     *     $client->table('index','_doc')->deleteByIds(['kmXADJEBegXAJ580Qqp6']);
+     *     $tables = ['my_index','my_index2']
      * </code>
+     * @return array
      */
-    public function deleteByIds(array $ids): array
+    public function getMap(array $tables = [])
     {
-        $params = [
-            'index' => $this->index,
-            'type' => $this->type,
-        ];
-        foreach ($ids as $v) {
-            $params ['body'][] = array(
-                'delete' => array(
-                    '_index' => $this->index,
-                    '_type' => $this->type,
-                    '_id' => $v
-                )
-            );
+        $params = [];
+        if (!empty($tables)) {
+            $params['index'] = $tables;
         }
-        return $this->client->bulk($params);
-    }
-
-    /**
-     * 获取表结构
-     * @param array $index = [] 要获取的表的结构，为空则获取所有的表结构
-     * @return array
-     * <code>
-     *     $result = $client->getMap(['index']);
-     * </code>
-     */
-    public function getMap(array $index): array
-    {
-        $params = ['index' => $index];
         return $this->client->indices()->getMapping($params);
     }
 
     /**
-     * 根据id查询数据
-     * @param string $id id
+     * 获取表结构
+     * @param array $tables
      * @return array
-     * <code>
-     *     $client->table('index','_doc')->findById('kmXADJEBegXAJ580Qqp6');
-     * </code>
      */
-    public function findById(string $id): array
+    public function getTableInfo(array $tables = [])
     {
+        return $this->getMap($tables);
+    }
+
+    /**
+     * 插入数据
+     * @param array $data
+     * <code>
+     *     $data = ['username'=>"张三",'age'=>15]
+     * </code>
+     * @return array|callable
+     */
+    public function insert(array $data)
+    {
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Data cannot be empty');
+        }
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
         $params = [
             'index' => $this->index,
-            'type' => $this->type,
+            'body' => []
+        ];
+        if (isset($data['id'])) {
+            $params['id'] = $data['id'];
+            unset($data['id']);
+        }
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Data cannot be empty');
+        }
+        $params['body'] = $data;
+
+        /** 清空上一轮查询的限制条件 */
+        $this->clearCondition();
+        return $this->client->index($params);
+    }
+
+    /**
+     * 添加数据
+     * @param array $data
+     * @return array|callable
+     */
+    public function add(array $data)
+    {
+        return $this->insert($data);
+    }
+
+
+
+    /**
+     * 通过id查询数据
+     * @param string $id
+     * @return array|callable
+     */
+    public function findById(string $id)
+    {
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        if (empty($id)) {
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
+        $params = [
+            'index' => $this->index,
             'id' => $id
         ];
+        /** 清空上一轮查询的限制条件 */
+        $this->clearCondition();
         return $this->client->get($params);
     }
 
     /**
-     * 使用IDs 批量获取数据
-     * @param array $ids
-     * @return array|callable
+     * 通过id更新数据
+     * @param string $id 索引id
+     * @param array $data 需要更新的数据
      * <code>
-     *     $client->table('index','_doc')->getByIds(['kmXADJEBegXAJ580Qqp6']);
+     *     $data = ['username'=>'张三','age'=>12]
      * </code>
+     * @return array|callable
      */
-    public function getByIds(array $ids)
+    public function updateById(string $id, array $data)
     {
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        if (empty($id)) {
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Data cannot be empty');
+        }
         $params = [
             'index' => $this->index,
-            'type' => $this->type,
+            'id' => $id,
             'body' => [
-                'query' => [
-                    'terms' => [
-                        '_id' => $ids
-                    ]
-                ]
+                'doc' => $data
             ]
         ];
-
-        return $this->client->search($params);
+        /** 清空上一轮查询的限制条件 */
+        $this->clearCondition();
+        return $this->client->update($params);
     }
+
+    /**
+     * 通过id删除数据
+     * @param string $id 索引id
+     * @return array|callable
+     */
+    public function deleteById(string $id)
+    {
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Table name cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        if (empty($id)) {
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
+        $params = [
+            'index' => $this->index,
+            'id' => $id
+        ];
+        /** 清空上一轮查询的限制条件 */
+        $this->clearCondition();
+        return $this->client->delete($params);
+    }
+
 
     /**
      * 原生查询
@@ -230,7 +398,6 @@ class ESClient
      * <code>
      * $client->query([
      *      'index'=>'index',
-     *      'type'=>'_doc',
      *      'body'=>[
      *           'query'=>[
      *              'bool'=>[
@@ -255,10 +422,13 @@ class ESClient
      */
     public function query(array $body): array
     {
+
         $params = [
             'index' => $this->index,
-            'type' => $this->type,
         ];
+        if (!$this->IndexExists($params['index'])) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
         return $this->client->search(array_merge($params, $body));
     }
 
@@ -272,8 +442,14 @@ class ESClient
      * </code>
      * @note 操作字段有ctx和doc两种方法，并且不可频繁添加脚本，否则es一直编译脚本，负担过重会抛出异常
      */
-    public function addScript(string $id, string $scriptContent): ?array
+    public function addScript(string $id, string $scriptContent): array
     {
+        if (empty($id)){
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
+        if (empty($scriptContent)){
+            throw new \InvalidArgumentException('Script content cannot be empty');
+        }
         $params = [
             'id' => $id,
             'body' => [
@@ -297,6 +473,9 @@ class ESClient
      */
     public function deleteScript(string $id): bool
     {
+        if (empty($id)){
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
         try {
             $this->client->deleteScript(['id' => $id]);
             return true;
@@ -315,6 +494,9 @@ class ESClient
      */
     public function getScript(string $id): array
     {
+        if (empty($id)){
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
         $params = [
             'id' => $id
         ];
@@ -329,7 +511,7 @@ class ESClient
      * 需要调用的脚本
      * @var array
      */
-    private array $script = [];
+    private  $script = [];
 
     /**
      * 调用脚本
@@ -341,6 +523,9 @@ class ESClient
      */
     public function withScript(string $id)
     {
+        if (empty($id)){
+            throw new \InvalidArgumentException('Id cannot be empty');
+        }
         $this->script[] = $id;
         return $this;
     }
@@ -355,6 +540,9 @@ class ESClient
      */
     public function IndexExists(string $index): bool
     {
+        if (empty($index)) {
+            throw new \InvalidArgumentException('Index name cannot be empty');
+        }
         $params = [
             'index' => $index
         ];
@@ -367,40 +555,27 @@ class ESClient
     }
 
     /**
-     * 根据id更新数据
-     * @param string $index 索引
-     * @param string $type 类型
-     * @param string $id 必须是doc文档的_id 才可以
-     * @param array $data 需要修改的数据
-     * @return array
-     * <code>
-     *     $client->updateById('index','_doc',$result[0]['_id'],['content'=>'今天你测试了吗']);
-     * </code>
+     * 表是否存在
+     * @param string $table
+     * @return bool
      */
-    public function updateById(string $id, array $data): array
+    public function tableExists(string $table): bool
     {
-        $params = [
-            'index' => $this->index,
-            'type' => $this->type,
-            'id' => $id,
-            'body' => [
-                'doc' => $data
-            ]
-        ];
-        return $this->client->update($params);
+        return $this->IndexExists($table);
     }
+
 
     /**
      * 需要排除条件的字段
      * @var array
      */
-    private array $mustNot = [];
+    private  $mustNot = [];
 
     /**
      * must必须满足查询条件的字段
      * @var array
      */
-    private array $must = [];
+    private  $must = [];
 
     /**
      * where查询条件
@@ -484,7 +659,7 @@ class ESClient
      * 或者查询的字段
      * @var array
      */
-    private array $should = [];
+    private  $should = [];
 
     /**
      * orwhere 或者查询
@@ -561,13 +736,13 @@ class ESClient
      * 翻页偏移量
      * @var int
      */
-    private int $from = 0;
+    private  $from = 0;
 
     /**
      * 分页查询数据条数
      * @var int
      */
-    private int $limit = 1000;
+    private  $limit = 1000;
 
     /**
      * 数据分页
@@ -578,7 +753,7 @@ class ESClient
      *     $client->table('index','_doc')->limit(0,10);
      * </code>
      */
-    public function limit(int $from = 0, int $limit = 1000)
+    public function limit(int $from = 0, int $limit = 100)
     {
         $this->from = $from;
         $this->limit = $limit;
@@ -586,15 +761,27 @@ class ESClient
     }
 
     /**
+     * 分页
+     * @param int $page 当前页
+     * @param int $size 每页条数
+     * @return $this
+     */
+    public function page(int $page = 1,int $size = 100)
+    {
+        $from  = ($page - 1) * $size;
+        return $this->limit($from, $size);
+    }
+
+    /**
      * 需要排序的字段
      * @var array
      */
-    private array $order = [];
+    private  $order = [];
 
     /**
      * 查询数据排序
-     * @param string $field
-     * @param string $direction
+     * @param string $field 排序字段
+     * @param string $direction asc|desc
      * @return $this
      * <code>
      *     $client->table('index','_doc')->orderBy('test_a','asc');
@@ -602,6 +789,12 @@ class ESClient
      */
     public function orderBy(string $field, string $direction = "desc")
     {
+        if (empty($field)){
+            throw new \InvalidArgumentException('Field cannot be empty');
+        }
+        if (empty($direction)){
+            $direction = "desc";
+        }
 
         $this->order[] = [
             $field => ['order' => $direction]
@@ -611,36 +804,10 @@ class ESClient
     }
 
     /**
-     * 数据库名称
-     * @var string
-     */
-    private string $index = 'index';
-
-    /**
      * 表名称
      * @var string
      */
-    private string $type = '_doc';
-
-    /**
-     * 设置表名称
-     * @param string $index
-     * @param string $type
-     * @return $this
-     * <code>
-     *     $client->table('index', '_doc');
-     * </code>
-     */
-    public function table(string $index = '', string $type = '')
-    {
-        if ($index) {
-            $this->index = $index;
-        }
-        if ($type) {
-            $this->type = $type;
-        }
-        return $this;
-    }
+    private  $index ;
 
     /**
      * 构建query
@@ -650,7 +817,6 @@ class ESClient
     {
         $params = [
             'index' => $this->index,
-            'type' => $this->type,
             'body' => [
                 'query' => [
                     'match_all' => new \stdClass()
@@ -701,8 +867,11 @@ class ESClient
      */
     public function getAll()
     {
-        if (empty($this->index) || empty($this->type)) {
-            throw new \Exception("请先设置index和type");
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Index cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
         }
         /** 构建query */
         $params = $this->buildQuery();
@@ -795,7 +964,7 @@ class ESClient
      * 需要求和的字段
      * @var array
      */
-    private array $sumData = [];
+    private  $sumData = [];
 
     /**
      * 求和查询
@@ -824,7 +993,7 @@ class ESClient
      * 需要求平均值的字段
      * @var array
      */
-    private array $aveData = [];
+    private  $aveData = [];
 
     /**
      * 求平均值
@@ -852,7 +1021,7 @@ class ESClient
      * 需要求最大值的字段
      * @var array
      */
-    private array $maxData = [];
+    private  $maxData = [];
 
     /**
      * 求最大值
@@ -876,7 +1045,8 @@ class ESClient
         return $this;
     }
 
-    private array $minData = [];
+    /** 取最小值的字段 */
+    private  $minData = [];
 
     /**
      * 取最小值
@@ -904,7 +1074,7 @@ class ESClient
      * 需要筛选的字段
      * @var array
      */
-    private array $select = [];
+    private  $select = [];
 
     /**
      * 筛选需要查询的字段
@@ -932,8 +1102,7 @@ class ESClient
         $this->mustNot = [];
         $this->order = [];
         $this->select = [];
-        $this->index = '';
-        $this->type = '';
+        $this->index = null;
         $this->groupBy = [];
         $this->sumData = [];
         $this->maxData = [];
@@ -967,8 +1136,11 @@ class ESClient
      */
     public function insertAll(array $data)
     {
-        if (empty($this->index) || empty($this->type)) {
-            throw new \Exception("请先设置index和type");
+        if (empty($this->index) ) {
+            throw new \InvalidArgumentException('Index cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
         }
         if (empty($data)) {
             throw new \Exception("数据不能为空");
@@ -978,7 +1150,6 @@ class ESClient
             $params['body'][] = [
                 'index' => [
                     '_index' => $this->index,
-                    '_type' => $this->type,
                 ]
             ];
             $params['body'][] = $v;
@@ -997,11 +1168,14 @@ class ESClient
      */
     public function updateAll(array $data)
     {
-        if (empty($this->index) || empty($this->type)) {
-            throw new \Exception("请先设置index和type");
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Index cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
         }
         if (empty($data)) {
-            throw new \Exception("数据不能为空");
+            throw new \InvalidArgumentException('Data cannot be empty');
         }
 
         /** 构建query */
@@ -1027,13 +1201,16 @@ class ESClient
      * @return array|callable
      * @throws \Exception
      * <code>
-     *     $client->table('index','_doc')->where(['test_a','>',2])->deleteAll();
+     *     $client->table('index')->where(['test_a','>',2])->deleteAll();
      * </code>
      */
     public function deleteAll()
     {
-        if (empty($this->index) || empty($this->type)) {
-            throw new \Exception("请先设置index和type");
+        if (empty($this->index)) {
+            throw new \InvalidArgumentException('Index cannot be empty');
+        }
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
         }
 
         /** 构建query */
@@ -1041,6 +1218,27 @@ class ESClient
         unset($params['body']['query']['match_all'], $params['size'], $params['from'], $params['body']['script_fields']);
         $this->clearCondition();
         return $this->client->deleteByQuery($params);
+    }
+
+    /**
+     * 删除数据
+     * @return array|callable
+     * @throws Exception
+     */
+    public function delete()
+    {
+        return $this->deleteAll();
+    }
+
+    /**
+     * 更新表字段
+     * @param array $data
+     * @return array|callable
+     * @throws Exception
+     */
+    public function update(array $data)
+    {
+        return $this->updateAll($data);
     }
 
 
@@ -1060,7 +1258,7 @@ class ESClient
      * 分组查询数据
      * @var array
      */
-    private array $groupBy = [];
+    private  $groupBy = [];
 
     /**
      * groupBy分组查询
@@ -1082,7 +1280,7 @@ class ESClient
      * whereIn数据查询数据
      * @var array
      */
-    private array $whereIn = [];
+    private  $whereIn = [];
 
     /**
      * whereIn 查询
@@ -1106,7 +1304,7 @@ class ESClient
      * whereNotIn查询条件
      * @var array
      */
-    private array $whereNotIn = [];
+    private  $whereNotIn = [];
 
     /**
      * whereNotIn 查询
@@ -1125,5 +1323,76 @@ class ESClient
         }
         $this->whereNotIn[$key] = $data;
         return $this;
+    }
+
+
+    /**
+     * 获取索引的详情
+     * @param array $indexes =[] 获取索引详情，为空则获取所有索引的详情
+     * @return array
+     * <code>
+     *     $client->getIndex(['index']);
+     * </code>
+     */
+    public function getIndex(array $indexes): array
+    {
+        $params = [
+            'index' => $indexes,
+        ];
+        return $this->client->indices()->getSettings($params);
+    }
+
+    /**
+     * 根据id批量删除数据
+     * @param array $ids 需要删除的所有记录的ID
+     * @return array
+     * <code>
+     *     $client->table('index','_doc')->deleteByIds(['kmXADJEBegXAJ580Qqp6']);
+     * </code>
+     */
+    public function deleteByIds(array $ids): array
+    {
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        $params = [
+            'index' => $this->index,
+        ];
+        foreach ($ids as $v) {
+            $params ['body'][] = array(
+                'delete' => array(
+                    '_index' => $this->index,
+                    '_id' => $v
+                )
+            );
+        }
+        return $this->client->bulk($params);
+    }
+
+    /**
+     * 使用IDs 批量获取数据
+     * @param array $ids
+     * @return array|callable
+     * <code>
+     *     $client->table('index')->getByIds(['kmXADJEBegXAJ580Qqp6']);
+     * </code>
+     */
+    public function getByIds(array $ids)
+    {
+        if (!$this->IndexExists($this->index)) {
+            throw new \InvalidArgumentException('Index does not exist');
+        }
+        $params = [
+            'index' => $this->index,
+            'body' => [
+                'query' => [
+                    'terms' => [
+                        '_id' => $ids
+                    ]
+                ]
+            ]
+        ];
+
+        return $this->client->search($params);
     }
 }

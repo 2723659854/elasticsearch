@@ -4,6 +4,9 @@
 稍微有一点错误，操作结果就不对。所以单独构建一个依赖官方客户端的插件，用户只需要传入关键字即可，后面增加了类似于关系型数据库
 的链式操作方法，用起来更简单一些。当然，本插件只能满足一些常用的功能需求，较为复杂的需求仍然需要手动构建请求体，你可以使用本插件
 直接调用官方客户端的方法。
+
+### 注意 
+根据elasticsearch安全策略需求，若你安装的elasticsearch8以下，请使用v1.0.9及以下版本，若你安装的elasticsearch8及以上版本，请使用v1.1.0及以上版本。
 ### 客户端安装方法
 ```bash 
 composer require xiaosongshu/elasticsearch
@@ -14,6 +17,22 @@ docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=
 
 docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e "xpack.security.enabled=false" -e "xpack.security.http.ssl.enabled=false" elasticsearch:8.15.0
 ```
+兼容elasticsearch v8.15.5版本，高版本需要使用账号密码，账号为`elastic`密码为`123456`端口号为`9201`，可以根据自己的实际需求调整配置。
+```bash
+docker run -d --name my-es -p 9201:9200 -p 9301:9300 -e "discovery.type=single-node" -e "ELASTIC_PASSWORD=123456" -e "xpack.security.enabled=true" elasticsearch:8.15.5
+```
+如果是多个服务之间调用，可能需要创建网络
+```bash
+# 创建默认的网络桥接
+docker network create default_network
+# 创建网络
+docker network create shared_network
+# 将Elasticsearch容器加入网络（假设容器名为my-es，根据实际修改）
+docker network connect shared_network my-es
+# 将PHP容器加入网络（假设容器名为your_php_container_name，根据实际修改）
+docker network connect shared_network your_php_container_name
+```
+
 ### 关于IK分词器
 参考 加入Ik分词器的方法：https://blog.csdn.net/weixin_44364444/article/details/125758975
 
@@ -194,6 +213,4 @@ print_r($result);
 ```bash 
  php ./vendor/bin/phpunit -c phpunit.xml
 ```
-### 联系作者
-2723659854@qq.com
 

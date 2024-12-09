@@ -24,9 +24,6 @@ class ClientTest extends TestCase
      */
     public function testCreateIndex(){
         $createIndex  = $this->handler->createIndex('index','_doc');
-        var_dump($createIndex);
-
-
         self::assertIsArray($createIndex);
 
     }
