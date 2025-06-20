@@ -23,6 +23,9 @@ class EsClient
     /** 密码 */
     protected $password ;
 
+    /** 代理 */
+    protected $proxy = [];
+
     /**
      * 实例化客户端
      * <code>
@@ -53,10 +56,13 @@ class EsClient
         $this->nodes = !empty($config['nodes']) ? $config['nodes'] : $this->nodes;
         $this->username = !empty($config['username']) ? $config['username'] : '';
         $this->password = !empty($config['password']) ? $config['password'] : '';
+        $this->proxy = !empty($config['proxy']) ? $config['proxy'] : $this->proxy;
+
         /** 链接客户端 */
         if (empty($this->client)) {
             $client = ClientBuilder::create()
-                ->setHosts($this->nodes);
+                ->setHosts($this->nodes)
+                ->setConnectionParams($this->proxy);
             if (!empty($this->username) && !empty($this->password)) {
                 $client->setBasicAuthentication($this->username, $this->password);
             }
