@@ -61,14 +61,22 @@ $client = new \Xiaosongshu\Elasticsearch\ESClient();
 require_once 'vendor/autoload.php';
 
 /** 实例化客户端 elasticsearch链式操作演示 */
-$client = new \Xiaosongshu\Elasticsearch\ESClient([
-    /** 节点列表 */
-    'nodes' => ['192.168.101.170:9200'],
-    /** 用户名 */
-    'username' => '',
-    /** 密码 */
-    'password' => '',
-]);
+$client = new \Xiaosongshu\Elasticsearch\ESClient(
+    [
+        'nodes' => ['127.0.0.1:9200',],
+        'username' => '',
+        'password' => '',
+        'proxy' => [
+            'client' => [
+                'curl' => [
+                    CURLOPT_PROXY => '', // 明确禁用代理
+                    CURLOPT_PROXYUSERPWD => '', // 清除代理认证
+                    CURLOPT_NOPROXY => '*' // 对所有主机禁用代理
+                ]
+            ]
+        ]
+    ]
+);
 
 /** 获取表结构 */
 $result = $client->getMap(['index']);
