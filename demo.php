@@ -5,8 +5,8 @@ require_once 'vendor/autoload.php';
 $client = new \Xiaosongshu\Elasticsearch\ESClient(
     [
         'nodes' => ['127.0.0.1:9200',],
-        'username' => '',
-        'password' => '',
+        'username' => 'elastic',
+        'password' => '123456',
         'proxy' => [
             'client' => [
                 'curl' => [
@@ -52,7 +52,7 @@ $result = $client->table('index', '_doc')->insertAll([
         'sex' => 1
     ]
 ]);
-print_r($result);
+
 
 $result = $client->table('index', '_doc')->getAll();
 print_r($result);
