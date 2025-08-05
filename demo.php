@@ -4,9 +4,12 @@ require_once 'vendor/autoload.php';
 /** 实例化客户端 elasticsearch链式操作演示 */
 $client = new \Xiaosongshu\Elasticsearch\ESClient(
     [
-        'nodes' => ['127.0.0.1:9200',],
+        'nodes' => [
+            '192.168.110.72:9210',
+            '8.154.18.197:9210'
+        ],
         'username' => 'elastic',
-        'password' => '123456',
+        'password' => '3031067bec06de8f',
         'proxy' => [
             'client' => [
                 'curl' => [

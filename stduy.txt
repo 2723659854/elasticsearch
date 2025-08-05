@@ -3,3 +3,24 @@ docker run -d --name my-es -p 9200:9200 -p 9300:9300 -e "discovery.type=single-n
 
 本地测试版本
 docker run -d --name elasticsearch7.17.7 -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e "ELASTIC_PASSWORD=123456" elasticsearch:7.17.7
+
+# 创建默认的网络桥接
+docker network create default_network
+# 创建网络
+docker network create shared_network
+# 将Elasticsearch容器加入网络（假设容器名为my-es，根据实际修改）
+docker network connect shared_network my-es
+# 将PHP容器加入网络（假设容器名为your_php_container_name，根据实际修改）
+docker network connect shared_network your_php_container_name
+
+# 创建elasticsearch服务， 用户名是elastic ，密码是123456
+docker run -d --name my-es -p 9201:9200 -p 9301:9300 -e "discovery.type=single-node" -e "ELASTIC_PASSWORD=123456" -e "xpack.security.enabled=true" elasticsearch:8.15.5
+
+# ok
+
+# Created elasticsearch keystore in /usr/share/elasticsearch/config/elasticsearch.keystore
+# ERROR: Elasticsearch died while starting up, with exit code 137
+# 这个报错是内存不足
+# docker run -d --name my-es -p 9210:9200 -p 9310:9300 -e "discovery.type=single-node" -e "ELASTIC_PASSWORD=3031067bec06de8f" -e "xpack.security.enabled=true" -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" --memory=1g elasticsearch:8.15.5
+# 最大和最小内存设置为6G,固定内存
+# docker run -d  --name my-es  -p 9210:9200  -p 9310:9300  --memory=12g  -e "ES_JAVA_OPTS=-Xms6g -Xmx6g"  -e "discovery.type=single-node"  -e "ELASTIC_PASSWORD=3031067bec06de8f"  -e "xpack.security.enabled=true"  elasticsearch:8.15.5
