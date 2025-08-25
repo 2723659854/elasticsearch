@@ -190,9 +190,8 @@ $result = $client->table('index','_doc')->withScript('update_content11')->getAll
 /** 删除脚本*/
 $result = $client->deleteScript('update_content');
 /** 原生查询 */
-$result = $client->query([
+$result = $client->table('index','_doc')->query([
     'index'=>'index',
-    'type'=>'_doc',
     'body'=>[
         'query'=>[
             'bool'=>[

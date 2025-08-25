@@ -428,7 +428,9 @@ class EsClient
      */
     public function query(array $body): array
     {
-
+        if(isset($body['index']) && empty($this->index)){
+            $this->index = $body['index'];
+        }
         $params = [
             'index' => $this->index,
         ];
