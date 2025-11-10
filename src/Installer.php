@@ -16,6 +16,7 @@ class Installer
      */
     public static function install()
     {
+        echo "安装扩展xiaosongshu/elasticsearch\r\n";
         $scriptPath = __DIR__ . '/../scripts/install.php';
         if (file_exists($scriptPath)) {
             require $scriptPath;
@@ -30,6 +31,7 @@ class Installer
      */
     public static function uninstall()
     {
+        echo "卸载扩展xiaosongshu/elasticsearch\r\n";
         $scriptPath = __DIR__ . '/../scripts/uninstall.php';
         if (file_exists($scriptPath)) {
             require $scriptPath;
