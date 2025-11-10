@@ -17,3 +17,4 @@ if (file_exists($targetConfigFile)) {
 } else {
     echo "[提示] 未找到配置文件，无需删除：{$targetConfigFile}\n";
 }
+exit(0);
