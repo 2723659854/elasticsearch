@@ -28,9 +28,15 @@
             "php-http/discovery": true
         }
     },
-   "scripts": {
-     "post-install-cmd": "php vendor/xiaosongshu/elasticsearch/scripts/install.php",
-     "post-update-cmd": "php vendor/xiaosongshu/elasticsearch/scripts/install.php",
-     "pre-remove-cmd": "php vendor/xiaosongshu/elasticsearch/scripts/uninstall.php"
-   }
+  "scripts": {
+    "post-install-cmd": [
+      "Xiaosongshu\\Elasticsearch\\Installer::install"
+    ],
+    "post-update-cmd": [
+      "Xiaosongshu\\Elasticsearch\\Installer::install"
+    ],
+    "pre-remove-cmd": [
+      "Xiaosongshu\\Elasticsearch\\Installer::uninstall"
+    ]
+  }
 }
