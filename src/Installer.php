@@ -40,3 +40,6 @@ class Installer
         }
     }
 }
+
+
+//Installer::uninstall();

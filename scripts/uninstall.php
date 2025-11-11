@@ -2,7 +2,7 @@
 
 // 推导路径（与安装脚本一致，确保兼容自定义 vendor 目录）
 $scriptPath = realpath(__FILE__);
-$libraryRoot = dirname($scriptPath);
+$libraryRoot = dirname($scriptPath,2);
 $projectRoot = dirname($libraryRoot) . '/..';
 $targetConfigFile = $projectRoot . '/config/elasticsearch.php';
 

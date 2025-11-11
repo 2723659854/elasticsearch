@@ -4,12 +4,11 @@
 # php vendor/xiaosongshu/elasticsearch/scripts/install.php
 // 1. 推导路径（关键：适配用户项目结构）
 $scriptPath = realpath(__FILE__); // 当前脚本绝对路径
-$libraryPath = dirname($scriptPath); // 库根目录
+$libraryPath = dirname($scriptPath,2); // 库根目录
 $projectRoot = dirname($libraryPath) . '/..'; // 项目根目录
 $sourceConfig = $libraryPath . '/config/elasticsearch.php'; // 源配置文件
 $targetDir = $projectRoot . '/config'; // 目标配置目录（用户项目的 config 目录）
 $targetConfig = $targetDir . '/elasticsearch.php'; // 目标文件
-
 // 2. 检查源文件是否存在
 if (!file_exists($sourceConfig)) {
     fwrite(STDERR, "错误：配置文件不存在 -> {$sourceConfig}\n");
