@@ -7,7 +7,7 @@ namespace Xiaosongshu\Elasticsearch;
  * @author yanglong
  * @time 2025年11月10日18:19:25
  */
-class Installer
+class Install
 {
 
     /**

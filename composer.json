@@ -30,13 +30,13 @@
     },
   "scripts": {
     "post-install-cmd": [
-      "\\Xiaosongshu\\Elasticsearch\\Installer::install"
+      "\\Xiaosongshu\\Elasticsearch\\Install::install"
     ],
     "post-update-cmd": [
-      "\\Xiaosongshu\\Elasticsearch\\Installer::install"
+      "\\Xiaosongshu\\Elasticsearch\\Install::install"
     ],
     "pre-remove-cmd": [
-      "\\Xiaosongshu\\Elasticsearch\\Installer::uninstall"
+      "\\Xiaosongshu\\Elasticsearch\\Install::uninstall"
     ]
   }
 }
