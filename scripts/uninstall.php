@@ -11,10 +11,8 @@ if (file_exists($targetConfigFile)) {
     if (unlink($targetConfigFile)) {
         echo "[成功] 已删除配置文件：{$targetConfigFile}\n";
     } else {
-        fwrite(STDERR, "[警告] 配置文件删除失败（可能权限不足）：{$targetConfigFile}\n");
-        // 不中断卸载流程，仅警告
+        echo "[警告] 配置文件删除失败（可能权限不足）：{$targetConfigFile}\n";
     }
 } else {
     echo "[提示] 未找到配置文件，无需删除：{$targetConfigFile}\n";
 }
-exit(0);

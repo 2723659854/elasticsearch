@@ -12,7 +12,7 @@ $targetConfig = $targetDir . '/elasticsearch.php'; // 目标文件
 // 2. 检查源文件是否存在
 if (!file_exists($sourceConfig)) {
     fwrite(STDERR, "错误：配置文件不存在 -> {$sourceConfig}\n");
-    exit(0);
+    return;
 }
 
 // 3. 创建目标目录（不存在则创建）
@@ -23,14 +23,14 @@ if (!is_dir($targetDir)) {
 // 4. 复制文件（避免覆盖用户已修改的配置）
 if (file_exists($targetConfig)) {
     fwrite(STDOUT, "提示：配置文件已存在，跳过复制 -> {$targetConfig}\n");
-    exit(0);
+    return;
 }
 
 // 5. 执行复制
 if (copy($sourceConfig, $targetConfig)) {
     fwrite(STDOUT, "成功：配置文件已自动复制到 -> {$targetConfig}\n");
-    exit(0);
+    return;
 } else {
     fwrite(STDERR, "错误：配置文件复制失败 -> {$targetConfig}\n");
-    exit(0);
+    return;
 }
